@@ -4,7 +4,7 @@
     "description": "A scaffolding tool for Next.js",
     "main": "index.js",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "format": "prettier --write \"./**/*.{js,jsx,ts,tsx,json,css,md}\""
     },
     "repository": {
         "type": "git",
@@ -17,5 +17,8 @@
         "url": "https://github.com/rasulemin/next-scaffold/issues"
     },
     "homepage": "https://github.com/rasulemin/next-scaffold#readme",
-    "type": "module"
+    "type": "module",
+    "devDependencies": {
+        "prettier": "^3.7.4"
+    }
 }
