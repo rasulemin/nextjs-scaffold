@@ -80,7 +80,7 @@ async function _addFormatScriptToPackageJson({ cwd }: { cwd: string }): Promise<
         let freshlyAdded = false
         await updatePackageJson(cwd, (pkg) => {
             const currentFormatScript = pkg.scripts?.format
-            const targetFormatScript = 'prettier --write "**/*.{js,jsx,ts,tsx,json,css,md}"'
+            const targetFormatScript = 'prettier --write .'
 
             if (currentFormatScript === targetFormatScript) {
                 logger.info('Format script already configured correctly')

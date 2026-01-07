@@ -48,3 +48,6 @@ Thumbs.db
 
 # npm package
 *.tgz
+
+# VSCode settings sample
+!src/commands/eslint/.vscode

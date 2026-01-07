@@ -8,7 +8,6 @@ export default antfu(
         lessOpinionated: true,
         typescript: true,
         jsx: true,
-        ignores: ['pnpm-workspace.yaml'],
     },
     {
         rules: {

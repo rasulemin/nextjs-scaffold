@@ -1,6 +1,6 @@
 import { detect, PM } from 'detect-package-manager'
 import { execa } from 'execa'
-import { copyFile, unlink } from 'node:fs/promises'
+import { copyFile, mkdir, unlink } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isNodeError } from '../../lib/helpers'
@@ -154,29 +154,56 @@ async function _runLintFix({
 }
 
 /**
- * Formats the newly created config file (just in case the formatting is off).
+ * Formats the newly created/copied file (just in case the formatting is off).
  */
-async function _runFormatter({
+async function _formatFile({
     cwd,
     packageManager,
+    filePath,
 }: {
     cwd: string
     packageManager: PM
+    filePath: string
 }): Promise<void> {
-    const configFileName = `eslint.config.${CONFIG.defaultConfigExtension}`
-    const configPath = join(cwd, configFileName)
-
     try {
-        logger.info(`Formatting ${configFileName}...`)
-        await execa(packageManager, ['exec', 'prettier', '--write', configPath], {
+        logger.info(`Formatting ${filePath}...`)
+        await execa(packageManager, ['exec', 'prettier', '--write', filePath], {
             cwd,
             stdio: 'pipe',
         })
-        logger.success(`${configFileName} formatted`)
+        logger.success(`${filePath} formatted`)
     } catch (error) {
         // Non-critical: just log a warning if formatting fails
-        logger.warn(`Failed to format ${configFileName}. You can format it manually.`)
+        logger.warn(`Failed to format ${filePath}. You can format it manually.`)
         logger.debug('Formatting error:', { error })
+    }
+}
+
+/**
+ * Copies VSCode settings.json with recommended ESLint configuration.
+ */
+async function _copyVscodeSettings({ cwd }: { cwd: string }): Promise<void> {
+    // TODO: REUSE/ABSTRACTAWAY
+    const __filename = fileURLToPath(import.meta.url)
+    const __dirname = dirname(__filename)
+    const sourceSettingsPath = join(__dirname, '.vscode', 'settings.json')
+    const targetVscodeDir = join(cwd, '.vscode')
+    const targetSettingsPath = join(targetVscodeDir, 'settings.json')
+
+    try {
+        logger.info('Copying VSCode settings...')
+        // Create .vscode directory if it doesn't exist
+        await mkdir(targetVscodeDir, { recursive: true })
+        await copyFile(sourceSettingsPath, targetSettingsPath)
+        logger.success('VSCode settings created with ESLint configuration')
+    } catch (error) {
+        if (isNodeError(error) && error.code === 'EEXIST') {
+            logger.info('VSCode settings already exist, skipping')
+            return
+        }
+        // Non-critical: just log a warning if copying fails
+        logger.warn('Failed to copy VSCode settings. You can set it up manually.')
+        logger.debug('Copy error:', { error })
     }
 }
 
@@ -191,13 +218,22 @@ export async function setupEslint({ cwd }: { cwd: string }): Promise<void> {
 
     // 3. Copy the config file to the project root
     await _copyConfigFile({ cwd })
+    const configFileName = `eslint.config.${CONFIG.defaultConfigExtension}`
+    const configPath = join(cwd, configFileName)
+    await _formatFile({ cwd, packageManager, filePath: configPath })
 
-    // 4. Run the formatter on the config file
-    await _runFormatter({ cwd, packageManager })
-
-    // 5. Add `lint:fix` script to package.json
+    // 4. Add `lint:fix` script to package.json
     await _addLintFixScript({ cwd })
 
-    // 6. Run the `lint:fix` script
+    // 5. Run the `lint:fix` script
     await _runLintFix({ cwd, packageManager })
+
+    // 6. Copy vscode settings
+    await _copyVscodeSettings({ cwd })
+    const vscodeSettingsPath = join(cwd, '.vscode/settings.json')
+    await _formatFile({ cwd, packageManager, filePath: vscodeSettingsPath })
+
+    // 7. Format package.json file (in case it was modified)
+    const packageJsonPath = join(cwd, 'package.json')
+    await _formatFile({ cwd, packageManager, filePath: packageJsonPath })
 }
