@@ -1,11 +1,11 @@
+import { detect } from 'detect-package-manager'
+import { execa } from 'execa'
 import { constants, copyFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isNodeError } from '../../lib/helpers'
 import { logger as _logger } from '../../lib/logger'
-import { execa } from 'execa'
-import { detect } from 'detect-package-manager'
-import { TPackageJson, hasPackage, updatePackageJson } from '../../lib/package-json'
+import { hasPackage, readPackageJson, updatePackageJson } from '../../lib/package-json'
 
 const logger = _logger.withTag('prettier-command')
 
@@ -37,36 +37,31 @@ async function _copyConfigFile({ cwd }: { cwd: string }): Promise<void> {
     }
 }
 
-async function _installPrettier({ cwd }: { cwd: string }): Promise<void> {
+async function _ensurePrettierInstalled({ cwd }: { cwd: string }): Promise<void> {
+    try {
+        const packageJsonContents = await readPackageJson(cwd)
+        if (hasPackage(packageJsonContents, 'prettier')) {
+            logger.info('Prettier already installed')
+            return
+        }
+    } catch (error) {
+        throw new Error('Failed to check if Prettier is installed', { cause: error })
+    }
+
     logger.info('Installing Prettier')
     const pm = await detect({ cwd })
     const action = pm === 'npm' ? 'install' : 'add'
     try {
-        const result = await execa(pm, [action, '-D', 'prettier'], { cwd })
+        await execa(pm, [action, '-D', 'prettier'], { cwd })
         logger.success('Prettier installed')
     } catch (error) {
         throw new Error('Failed to install Prettier', { cause: error })
     }
 }
 
-export async function setupPrettier({
-    cwd,
-    packageJsonContents,
-}: {
-    cwd: string
-    packageJsonContents: TPackageJson
-}): Promise<void> {
-    logger.info('Setting up Prettier')
-    await _copyConfigFile({ cwd })
-
-    if (hasPackage(packageJsonContents, 'prettier')) {
-        logger.info('Prettier already installed')
-    } else {
-        await _installPrettier({ cwd })
-    }
-
-    // Add format script to package.json
+async function _addFormatScriptToPackageJson({ cwd }: { cwd: string }): Promise<void> {
     try {
+        let freshlyAdded = false
         await updatePackageJson(cwd, (pkg) => {
             const currentFormatScript = pkg.scripts?.format
             const targetFormatScript = 'prettier --write "**/*.{js,jsx,ts,tsx,json,css,md}"'
@@ -84,13 +79,21 @@ export async function setupPrettier({
                 return pkg
             }
 
-            logger.success('Added format script to package.json')
+            freshlyAdded = true
             return {
                 ...pkg,
                 scripts: { ...pkg.scripts, format: targetFormatScript },
             }
         })
+        if (freshlyAdded) logger.success('Added format script to package.json')
     } catch (error) {
         throw new Error('Failed to update package.json with format script', { cause: error })
     }
+}
+
+export async function setupPrettier({ cwd }: { cwd: string }): Promise<void> {
+    logger.info('Setting up Prettier')
+    await _copyConfigFile({ cwd })
+    await _ensurePrettierInstalled({ cwd })
+    await _addFormatScriptToPackageJson({ cwd })
 }

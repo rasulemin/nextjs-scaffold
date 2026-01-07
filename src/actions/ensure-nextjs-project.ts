@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { isNodeError } from '../lib/helpers'
 import { logger as _logger } from '../lib/logger'
-import { readPackageJson, hasPackage, TPackageJson } from '../lib/package-json'
+import { hasPackage, readPackageJson } from '../lib/package-json'
 
 const logger = _logger.withTag('ensure-nextjs-project')
 
@@ -19,7 +19,7 @@ class ValidationError extends Error {
  * This is a helper function to ensure the user is in a Next.js project before running any commands.
  * Exits the process with an error if it isn't.
  */
-export async function ensureNextJsProject({ cwd }: { cwd: string }): Promise<TPackageJson> {
+export async function ensureNextJsProject({ cwd }: { cwd: string }): Promise<void> {
     // Check if package.json exists
     const packageJsonPath = join(cwd, 'package.json')
     logger.debug(`Checking if package.json exists at ${packageJsonPath}`)
@@ -46,7 +46,6 @@ export async function ensureNextJsProject({ cwd }: { cwd: string }): Promise<TPa
         }
 
         logger.success('Next.js project detected')
-        return packageJsonContents
     } catch (err) {
         // Re-throw our custom errors as is
         if (err instanceof ValidationError) throw err
