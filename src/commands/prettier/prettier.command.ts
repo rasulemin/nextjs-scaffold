@@ -65,7 +65,7 @@ async function _ensurePrettierInstalled({
     logger.info('Installing Prettier')
     const action = packageManager === 'npm' ? 'install' : 'add'
     try {
-        await execa(packageManager, [action, '-D', 'prettier'], { cwd })
+        await execa(packageManager, [action, '-D', 'prettier'], { cwd, stdio: 'inherit' })
         logger.success('Prettier installed')
     } catch (error) {
         throw new Error('Failed to install Prettier', { cause: error })
@@ -130,7 +130,7 @@ async function _formatCodebase({
         }
 
         logger.info('Formatting codebase...')
-        await execa(packageManager, ['run', 'format'], { cwd })
+        await execa(packageManager, ['run', 'format'], { cwd, stdio: 'inherit' })
         logger.success('Codebase formatted')
     } catch (error) {
         logger.error('Formatting error occurred', { error })
