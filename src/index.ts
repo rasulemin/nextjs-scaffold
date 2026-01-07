@@ -21,9 +21,9 @@ async function main() {
     logger.info(`Working in directory: ${cwd}`)
 
     try {
-        await ensureNextJsProject({ cwd })
-        await setupPrettier({ cwd })
-        await cleanUpPublicDir({ cwd })
+        // await ensureNextJsProject({ cwd })
+        // await setupPrettier({ cwd })
+        // await cleanUpPublicDir({ cwd })
         await setupEslint({ cwd })
     } catch (error) {
         logger.error('Setup Failed', { error })

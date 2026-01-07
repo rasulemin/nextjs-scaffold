@@ -1,16 +1,17 @@
 import { detect, PM } from 'detect-package-manager'
 import { execa } from 'execa'
-import { access } from 'node:fs/promises'
-import { join } from 'node:path'
+import { copyFile, unlink } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { isNodeError } from '../../lib/helpers'
 import { logger as _logger } from '../../lib/logger'
 import { confirmPrompt } from '../../lib/prompt'
 
 const logger = _logger.withTag('setup-eslint')
 
 const CONFIG = {
-    // Check for existing config in this order (Next.js creates .mjs by default)
     possibleConfigExtensions: ['mjs', 'js', 'cjs', 'ts', 'mts', 'cts'],
-    // If no existing config found, create with this extension
+    // When creating a new config file, this extension will be used
     defaultConfigExtension: 'mjs',
     /**
      * @see https://github.com/antfu/eslint-config#manual-install
@@ -44,26 +45,50 @@ async function _installDependencies({
 }
 
 /**
- * Detects the ESLint config file extension to use.
- * Checks for existing config in the root dir, otherwise returns default extension.
+ * Deletes any existing ESLint config files.
  */
-async function _detectConfigExtension({ cwd }: { cwd: string }): Promise<string> {
-    // Check all possible extensions
+async function _deleteExistingConfigs({ cwd }: { cwd: string }): Promise<void> {
+    let deletedCount = 0
+
     for (const ext of CONFIG.possibleConfigExtensions) {
+        const configPath = join(cwd, `eslint.config.${ext}`)
         try {
-            await access(join(cwd, `eslint.config.${ext}`))
-            logger.info(`Found existing eslint.config.${ext}`)
-            return ext
-        } catch {
-            // Keep checking
-            continue
+            await unlink(configPath)
+            logger.info(`Deleted existing eslint.config.${ext}`)
+            deletedCount++
+        } catch (error) {
+            if (isNodeError(error) && error.code === 'ENOENT') {
+                // File doesn't exist, skip
+                continue
+            }
+            // Other errors should be thrown
+            throw new Error(`Failed to delete eslint.config.${ext}`, { cause: error })
         }
     }
 
-    // No existing config found, use default
-    const defaultExt = CONFIG.defaultConfigExtension
-    logger.info(`No existing config found, will create eslint.config.${defaultExt}`)
-    return defaultExt
+    if (deletedCount === 0) {
+        logger.info('No existing ESLint config files found')
+    }
+}
+
+/**
+ * Copies the sample ESLint config file to the project root.
+ */
+async function _copyConfigFile({ cwd }: { cwd: string }): Promise<void> {
+    // TODO: Add ability to configure the config file
+    const __filename = fileURLToPath(import.meta.url)
+    const __dirname = dirname(__filename)
+    const sampleConfigPath = join(__dirname, 'eslint.config.mjs')
+
+    const targetConfigFileName = `eslint.config.${CONFIG.defaultConfigExtension}`
+    const targetConfigPath = join(cwd, targetConfigFileName)
+
+    try {
+        await copyFile(sampleConfigPath, targetConfigPath)
+        logger.success(`ESLint config file created: ${targetConfigFileName}`)
+    } catch (error) {
+        throw new Error('Failed to create ESLint config file', { cause: error })
+    }
 }
 
 export async function setupEslint({ cwd }: { cwd: string }): Promise<void> {
@@ -78,11 +103,14 @@ export async function setupEslint({ cwd }: { cwd: string }): Promise<void> {
     // 1. Install deps
     await _installDependencies({ cwd, packageManager })
 
-    // 2. Detect which config ext to use
-    const configExtension = await _detectConfigExtension({ cwd })
+    // 2. Delete any existing config files
+    await _deleteExistingConfigs({ cwd })
 
-    // 3. copy the config file to the project root
-    logger.info(`Config extension: ${configExtension}`)
+    // 3. Copy the config file to the project root
+    await _copyConfigFile({ cwd })
+
+    // TODO: run formatter on the config file
+
     // 4. add new "lint:fix" script to package.json that runs "eslint --fix"
     // 5. run the "lint:fix" script
 }
