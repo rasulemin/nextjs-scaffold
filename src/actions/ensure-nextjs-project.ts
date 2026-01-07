@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { isNodeError } from '../lib/helpers'
 import { logger as _logger } from '../lib/logger'
 
 const logger = _logger.withTag('ensure-nextjs-project')
@@ -10,6 +11,13 @@ const NEXT_CONFIG_FILES = ['next.config.js', 'next.config.mjs', 'next.config.ts'
 interface PackageJson {
     dependencies?: Record<string, string>
     devDependencies?: Record<string, string>
+}
+
+class ValidationError extends Error {
+    constructor(message: string, options?: { cause?: unknown }) {
+        super(message, options)
+        this.name = 'ValidationError'
+    }
 }
 
 /**
@@ -24,7 +32,6 @@ export async function ensureNextJsProject({ cwd }: { cwd: string }): Promise<voi
     try {
         const contents = await readFile(packageJsonPath, 'utf-8')
         const contentsJson = JSON.parse(contents) as PackageJson
-        const message = "This doesn't appear to be a Next.js project"
 
         // Check if dep is installed
         const hasDependency =
@@ -32,29 +39,29 @@ export async function ensureNextJsProject({ cwd }: { cwd: string }): Promise<voi
             (contentsJson.devDependencies && 'next' in contentsJson.devDependencies)
         logger.debug(`Checking if 'next' dependency is installed: ${hasDependency}`)
         if (!hasDependency) {
-            logger.error(`${message}: missing 'next' dependency`)
-            process.exit(1)
+            throw new ValidationError(
+                "This doesn't appear to be a Next.js project: missing 'next' dependency",
+            )
         }
 
         // Check for next config file
         const hasNextConfig = NEXT_CONFIG_FILES.some((file) => existsSync(join(cwd, file)))
         logger.debug(`Checking if next config file exists: ${hasNextConfig}`)
         if (!hasNextConfig) {
-            logger.error(`${message}: missing next.config.* file`)
-            process.exit(1)
+            throw new ValidationError(
+                "This doesn't appear to be a Next.js project: missing next.config.* file",
+            )
         }
 
         logger.success('Next.js project detected')
     } catch (err) {
-        if (isNodeError(err) && err.code === 'ENOENT') {
-            logger.error('No package.json found in the current directory.')
-        } else {
-            logger.error('Failed to read package.json file', { error: err })
-        }
-        process.exit(1)
-    }
-}
+        // Re-throw our custom errors as is
+        if (err instanceof ValidationError) throw err
 
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-    return typeof error === 'object' && error !== null && 'code' in error
+        if (isNodeError(err) && err.code === 'ENOENT') {
+            throw new Error('No package.json found in the current directory.')
+        }
+
+        throw new Error('Failed to read package.json file', { cause: err })
+    }
 }

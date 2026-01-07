@@ -1,11 +1,20 @@
 import { join } from 'node:path'
 import { ensureNextJsProject } from './actions/ensure-nextjs-project'
+import { configurePrettier } from './commands/prettier/prettier.command'
+import { logger } from './lib/logger'
 
-// const cwd = process.cwd()
-const cwd = join(process.cwd(), '../')
+const nextJsProjectPathForTesting = process.env.NEXTJS_PROJECT_PATH || '.'
 
-function main() {
-    ensureNextJsProject({ cwd })
+async function main() {
+    const cwd = join(process.cwd(), nextJsProjectPathForTesting)
+    logger.info(`Working in directory: ${cwd}`)
+    try {
+        await ensureNextJsProject({ cwd })
+        await configurePrettier({ cwd })
+    } catch (error) {
+        logger.error('Setup Failed', { error })
+        process.exit(1)
+    }
 }
 
-main()
+void main()
