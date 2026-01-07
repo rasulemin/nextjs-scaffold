@@ -3,12 +3,17 @@ import { execa } from 'execa'
 import { constants, copyFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createInterface } from 'node:readline/promises'
 import { isNodeError } from '../../lib/helpers'
 import { logger as _logger } from '../../lib/logger'
 import { hasPackage, readPackageJson, updatePackageJson } from '../../lib/package-json'
 
 const logger = _logger.withTag('prettier-command')
 
+/**
+ * Copies the sample Prettier config file to the project root.
+ * Skips if a config file already exists.
+ */
 async function _copyConfigFile({ cwd }: { cwd: string }): Promise<void> {
     // TODO: Stage 1: Use sample config file
     // TODO: Stage 2: Read config from project settings/config
@@ -37,6 +42,9 @@ async function _copyConfigFile({ cwd }: { cwd: string }): Promise<void> {
     }
 }
 
+/**
+ * Checks if Prettier is installed and installs it as a dev dependency if not.
+ */
 async function _ensurePrettierInstalled({
     cwd,
     packageManager,
@@ -64,6 +72,10 @@ async function _ensurePrettierInstalled({
     }
 }
 
+/**
+ * Adds a "format" script to package.json if it doesn't exist.
+ * Skips if a format script is already configured.
+ */
 async function _addFormatScriptToPackageJson({ cwd }: { cwd: string }): Promise<void> {
     try {
         let freshlyAdded = false
@@ -96,6 +108,10 @@ async function _addFormatScriptToPackageJson({ cwd }: { cwd: string }): Promise<
     }
 }
 
+/**
+ * Prompts the user to format the entire codebase.
+ * Runs the "format" script if confirmed (default: yes).
+ */
 async function _formatCodebase({
     cwd,
     packageManager,
@@ -104,6 +120,23 @@ async function _formatCodebase({
     packageManager: PM
 }): Promise<void> {
     try {
+        const rl = createInterface({
+            input: process.stdin,
+            output: process.stdout,
+        })
+
+        const response = await rl.question('Format the entire codebase now? [Y/n]: ')
+        rl.close()
+
+        const yesses = ['y', 'yes', 'yep', 'yeah', 'yeeehhhaaaaa', 'ohyeah', 'sure', 'duh']
+        const shouldFormat = !response.trim() || yesses.includes(response.trim().toLowerCase())
+        if (!shouldFormat) {
+            logger.info(
+                'Skipping codebase formatting. Run the `format` script manually when ready.',
+            )
+            return
+        }
+
         logger.info('Formatting codebase...')
         await execa(packageManager, ['run', 'format'], { cwd })
         logger.success('Codebase formatted')
@@ -113,6 +146,9 @@ async function _formatCodebase({
     }
 }
 
+/**
+ * Main function to set up Prettier in a Next.js project.
+ */
 export async function setupPrettier({ cwd }: { cwd: string }): Promise<void> {
     logger.info('Setting up Prettier')
     await _copyConfigFile({ cwd })
