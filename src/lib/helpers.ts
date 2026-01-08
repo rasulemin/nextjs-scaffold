@@ -1,4 +1,6 @@
 import { access, unlink } from 'node:fs/promises'
+import { join } from 'node:path'
+import { logger } from './logger'
 
 export function isNodeError(error: unknown): error is NodeJS.ErrnoException {
     return typeof error === 'object' && error !== null && 'code' in error
@@ -51,4 +53,34 @@ export async function tryDeleteFile(path: string): Promise<boolean> {
         }
         throw error
     }
+}
+
+/**
+ * Finds a file by checking multiple possible paths.
+ * Returns the full absolute path if found, null otherwise.
+ */
+export async function findFilePath({
+    cwd,
+    possiblePaths,
+    fileDescription,
+}: {
+    cwd: string
+    possiblePaths: string[]
+    fileDescription: string
+}): Promise<string | null> {
+    for (const path of possiblePaths) {
+        const fullPath = join(cwd, path)
+        try {
+            if (await fileExists(fullPath)) {
+                logger.debug(`Found ${fileDescription} at: ${path}`)
+                return fullPath
+            }
+        } catch (error) {
+            logger.error(`Error accessing ${path}:`, { error })
+            continue
+        }
+    }
+
+    logger.warn(`Could not find ${fileDescription} file (${possiblePaths.join(', ')})`)
+    return null
 }

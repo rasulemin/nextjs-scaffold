@@ -5,7 +5,8 @@ import { validatePrettierConfig } from './actions/validate-prettier-config'
 import { cleanUpPublicDir } from './commands/clean-up-public-dir.command'
 import { setupEslint } from './commands/eslint/eslint.command'
 import { setupPrettier } from './commands/prettier/prettier.command'
-import { updateHomePage } from './commands/update-home-page'
+import { changeFont } from './commands/change-font.command'
+import { updateHomePage } from './commands/update-home-page.command'
 import { fileExists } from './lib/helpers'
 import { logger } from './lib/logger'
 import { warningPrompt } from './lib/warning-prompt'
@@ -17,6 +18,7 @@ type Options = {
     skipPrettier?: boolean
     skipCleanup?: boolean
     skipHomepage?: boolean
+    skipFontChange?: boolean
     prettierConfig?: string
 }
 
@@ -66,6 +68,12 @@ async function main(options: Options) {
             logger.info('Skipping homepage update')
         }
 
+        if (!options.skipFontChange) {
+            await changeFont({ cwd })
+        } else {
+            logger.info('Skipping font change')
+        }
+
         if (!options.skipPrettier) {
             await setupPrettier({ cwd, prettierConfigPath: options.prettierConfig })
         } else {
@@ -87,6 +95,7 @@ program
     .option('--skip-prettier', 'Skip Prettier setup')
     .option('--skip-cleanup', 'Skip public directory cleanup')
     .option('--skip-homepage', 'Skip homepage update')
+    .option('--skip-font-change', 'Skip font change (Geist to Inter)')
     .option('--prettier-config <path>', 'Path to custom Prettier config file')
     .action(main)
 
