@@ -10,6 +10,8 @@ When you run this tool, it automatically:
 - Configures **ESLint** using [@antfu/eslint-config](https://github.com/antfu/eslint-config) with Next.js support
 - Removes the default SVG files from the `public` directory
 - Cleans up the home page (`page.tsx`) with a minimal starting point
+- Changes the default font from Geist to **Inter**
+- Adds a container utility class to `globals.css` for consistent layout spacing
 - Runs formatters and linters to clean everything up
 
 ## Installation
@@ -35,10 +37,12 @@ The tool will ask for confirmation before making any changes. If you're not sure
 You can skip specific steps if you want:
 
 ```bash
-next-scaffold --skip-prettier     # Skip Prettier setup
-next-scaffold --skip-eslint       # Skip ESLint setup
-next-scaffold --skip-cleanup      # Skip public directory cleanup
-next-scaffold --skip-homepage     # Skip homepage update
+next-scaffold --skip-prettier            # Skip Prettier setup
+next-scaffold --skip-eslint              # Skip ESLint setup
+next-scaffold --skip-cleanup             # Skip public directory cleanup
+next-scaffold --skip-homepage            # Skip homepage update
+next-scaffold --skip-font-change         # Skip font change (Geist to Inter)
+next-scaffold --skip-container-utility   # Skip adding container utility to globals.css
 ```
 
 Use your own Prettier config:
@@ -50,7 +54,7 @@ next-scaffold --prettier-config ./my-prettier-config.json
 Combine multiple options:
 
 ```bash
-next-scaffold --skip-cleanup --skip-homepage
+next-scaffold --skip-cleanup --skip-homepage --skip-font-change
 ```
 
 ## Development

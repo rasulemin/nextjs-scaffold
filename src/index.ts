@@ -7,6 +7,7 @@ import { setupEslint } from './commands/eslint/eslint.command'
 import { setupPrettier } from './commands/prettier/prettier.command'
 import { changeFont } from './commands/change-font.command'
 import { updateHomePage } from './commands/update-home-page.command'
+import { addContainerUtility } from './commands/add-container-utility.command'
 import { fileExists } from './lib/helpers'
 import { logger } from './lib/logger'
 import { warningPrompt } from './lib/warning-prompt'
@@ -19,6 +20,7 @@ type Options = {
     skipCleanup?: boolean
     skipHomepage?: boolean
     skipFontChange?: boolean
+    skipContainerUtility?: boolean
     prettierConfig?: string
 }
 
@@ -74,6 +76,12 @@ async function main(options: Options) {
             logger.info('Skipping font change')
         }
 
+        if (!options.skipContainerUtility) {
+            await addContainerUtility({ cwd })
+        } else {
+            logger.info('Skipping container utility')
+        }
+
         if (!options.skipPrettier) {
             await setupPrettier({ cwd, prettierConfigPath: options.prettierConfig })
         } else {
@@ -96,6 +104,7 @@ program
     .option('--skip-cleanup', 'Skip public directory cleanup')
     .option('--skip-homepage', 'Skip homepage update')
     .option('--skip-font-change', 'Skip font change (Geist to Inter)')
+    .option('--skip-container-utility', 'Skip adding container utility to globals.css')
     .option('--prettier-config <path>', 'Path to custom Prettier config file')
     .action(main)
 
