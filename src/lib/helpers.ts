@@ -25,10 +25,7 @@ export async function fileExists(path: string): Promise<boolean> {
  * Ensures a file exists at the given path.
  * Throws an error with a custom message if the file doesn't exist.
  */
-export async function ensureFileExists(
-    path: string,
-    errorMessage?: string,
-): Promise<void> {
+export async function ensureFileExists(path: string, errorMessage?: string): Promise<void> {
     try {
         await access(path)
     } catch (error) {

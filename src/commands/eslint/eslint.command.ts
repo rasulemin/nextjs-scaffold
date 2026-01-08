@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isNodeError, tryDeleteFile } from '../../lib/helpers'
 import { logger as _logger } from '../../lib/logger'
-import { updatePackageJson } from '../../lib/package-json'
+import { updatePackageJsonScripts } from '../../lib/package-json'
 
 const logger = _logger.withTag('setup-eslint')
 
@@ -91,13 +91,13 @@ async function _copyConfigFile({ cwd }: { cwd: string }): Promise<void> {
 async function _addLintFixScript({ cwd }: { cwd: string }): Promise<void> {
     try {
         let freshlyAdded = false
-        await updatePackageJson(cwd, (pkg) => {
-            const currentLintFixScript = pkg.scripts?.[CONFIG.lintFixScriptName]
+        await updatePackageJsonScripts(cwd, (scripts) => {
+            const currentLintFixScript = scripts[CONFIG.lintFixScriptName]
             const targetLintFixScript = 'eslint . --fix'
 
             if (currentLintFixScript === targetLintFixScript) {
                 logger.info(`\`${CONFIG.lintFixScriptName}\` script already configured correctly`)
-                return pkg
+                return scripts
             }
 
             if (currentLintFixScript) {
@@ -105,13 +105,13 @@ async function _addLintFixScript({ cwd }: { cwd: string }): Promise<void> {
                     `Skipping update. \`${CONFIG.lintFixScriptName}\` script already exists: "${currentLintFixScript}".`,
                 )
                 logger.info(`To update manually, set: "${targetLintFixScript}"`)
-                return pkg
+                return scripts
             }
 
             freshlyAdded = true
             return {
-                ...pkg,
-                scripts: { ...pkg.scripts, [CONFIG.lintFixScriptName]: targetLintFixScript },
+                ...scripts,
+                [CONFIG.lintFixScriptName]: targetLintFixScript,
             }
         })
         if (freshlyAdded)

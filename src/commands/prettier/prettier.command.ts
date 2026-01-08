@@ -5,7 +5,11 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { fileExists } from '../../lib/helpers'
 import { logger as _logger } from '../../lib/logger'
-import { hasPackage, readPackageJson, updatePackageJson } from '../../lib/package-json'
+import {
+    hasPackage,
+    readPackageJson,
+    updatePackageJsonScripts,
+} from '../../lib/package-json'
 
 const logger = _logger.withTag('prettier-command')
 
@@ -46,7 +50,9 @@ async function _copyConfigFile({
         await copyFile(sourceConfigPath, targetConfigPath)
         logger.success('Prettier config file created')
     } catch (error) {
-        throw new Error('Failed to create Prettier config file', { cause: error })
+        throw new Error('Failed to create Prettier config file', {
+            cause: error,
+        })
     }
 }
 
@@ -67,13 +73,18 @@ async function _ensurePrettierInstalled({
             return
         }
     } catch (error) {
-        throw new Error('Failed to check if Prettier is installed', { cause: error })
+        throw new Error('Failed to check if Prettier is installed', {
+            cause: error,
+        })
     }
 
     logger.info('Installing Prettier')
     const action = packageManager === 'npm' ? 'install' : 'add'
     try {
-        await execa(packageManager, [action, '-D', 'prettier'], { cwd, stdio: 'inherit' })
+        await execa(packageManager, [action, '-D', 'prettier'], {
+            cwd,
+            stdio: 'inherit',
+        })
         logger.success('Prettier installed')
     } catch (error) {
         throw new Error('Failed to install Prettier', { cause: error })
@@ -84,16 +95,20 @@ async function _ensurePrettierInstalled({
  * Adds a "format" script to package.json if it doesn't exist.
  * Skips if a format script is already configured.
  */
-async function _addFormatScriptToPackageJson({ cwd }: { cwd: string }): Promise<void> {
+async function _addFormatScriptToPackageJson({
+    cwd,
+}: {
+    cwd: string
+}): Promise<void> {
     try {
         let freshlyAdded = false
-        await updatePackageJson(cwd, (pkg) => {
-            const currentFormatScript = pkg.scripts?.format
-            const targetFormatScript = 'prettier --write .'
+        await updatePackageJsonScripts(cwd, (scripts) => {
+            const currentFormatScript = scripts.format
+            const targetFormatScript = 'prettier . --write'
 
             if (currentFormatScript === targetFormatScript) {
                 logger.info('Format script already configured correctly')
-                return pkg
+                return scripts
             }
 
             if (currentFormatScript) {
@@ -101,18 +116,20 @@ async function _addFormatScriptToPackageJson({ cwd }: { cwd: string }): Promise<
                     `Skipping update. Format script already exists: "${currentFormatScript}".`,
                 )
                 logger.info(`To update manually, set: "${targetFormatScript}"`)
-                return pkg
+                return scripts
             }
 
             freshlyAdded = true
             return {
-                ...pkg,
-                scripts: { ...pkg.scripts, format: targetFormatScript },
+                ...scripts,
+                format: targetFormatScript,
             }
         })
         if (freshlyAdded) logger.success('Added format script to package.json')
     } catch (error) {
-        throw new Error('Failed to update package.json with format script', { cause: error })
+        throw new Error('Failed to update package.json with format script', {
+            cause: error,
+        })
     }
 }
 
@@ -129,11 +146,16 @@ async function _formatCodebase({
 }): Promise<void> {
     try {
         logger.info('Formatting codebase...')
-        await execa(packageManager, ['run', 'format'], { cwd, stdio: 'inherit' })
+        await execa(packageManager, ['run', 'format'], {
+            cwd,
+            stdio: 'inherit',
+        })
         logger.success('Codebase formatted')
     } catch (error) {
         logger.error('Formatting error occurred', { error })
-        logger.warn('Failed to format codebase. You can run the `format` script manually.')
+        logger.warn(
+            'Failed to format codebase. You can run the `format` script manually.',
+        )
     }
 }
 

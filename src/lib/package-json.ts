@@ -55,26 +55,22 @@ export function updateObjectField<T extends keyof TPackageJson>(
 }
 
 /**
- * Updates package.json using a React-style updater function.
- * Reads the current package.json, applies your updates, and writes it back.
- *
- * NOTE: currently lacks validation, so the package.json file can be
- *       messed up if updater function is not careful.
+ * Updates scripts in package.json using an updater function.
+ * Reads the current package.json, applies script updates, and writes it back.
  *
  * @example
- * await updatePackageJson(cwd, (pkg) => ({
- *   ...pkg,
- *   scripts: {
- *     ...pkg.scripts,
- *     format: 'prettier --write .'
- *   }
+ * await updatePackageJsonScripts(cwd, (scripts) => ({
+ *   ...scripts,
+ *   format: 'prettier --write .'
  * }))
  */
-export async function updatePackageJson(
+export async function updatePackageJsonScripts(
     cwd: string,
-    updater: (current: TPackageJson) => TPackageJson,
+    updater: (currentScripts: Record<string, string>) => Record<string, string>,
 ): Promise<void> {
     const current = await readPackageJson(cwd)
-    const updated = updater(current)
+    const currentScripts = current.scripts || {}
+    const updatedScripts = updater(currentScripts)
+    const updated = { ...current, scripts: updatedScripts }
     await writePackageJson(cwd, updated)
 }

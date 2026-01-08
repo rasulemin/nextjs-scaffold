@@ -8,6 +8,7 @@ export default defineConfig({
     sourcemap: true,
     clean: true,
     shims: true,
+    onSuccess: 'chmod +x dist/index.js',
     banner: {
         js: '#!/usr/bin/env node',
     },
